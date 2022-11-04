@@ -2,16 +2,21 @@ import { deflate, inflate } from 'pako';
 
 import { ESPError, TimeoutError } from './error.js';
 import { BaseDevice } from './targets/base.js';
+import { ESP32ROM } from './targets/esp32.js';
+import { ESP32C3ROM } from './targets/esp32c3.js';
+import { ESP32S2ROM } from './targets/esp32s2.js';
+import { ESP32S3ROM } from './targets/esp32s3.js';
+import { ESP8266ROM } from './targets/esp8266.js';
 import { Transport } from './webserial.js';
 
-const MAGIC_TO_CHIP = {
-  [0x00f01d83]: () => import("./targets/esp32.js"),
-  [0x6921506f]: () => import("./targets/esp32c3.js"), // ESP32C3 eco 1+2
-  [0x1b31506f]: () => import("./targets/esp32c3.js"), // ESP32C3 eco3
-  [0x09]: () => import("./targets/esp32s3.js"),
-  [0x000007c6]: () => import("./targets/esp32s2.js"),
-  [0xfff0c101]: () => import("./targets/esp8266.js"),
-};
+const MAGIC_TO_CHIP = new Map<number, BaseDevice>([
+  [15736195, new ESP32ROM()], //0x00f01d83
+  [1763790959, new ESP32C3ROM()], //0x6921506f // ESP32C3 eco 1+2
+  [456216687, new ESP32C3ROM()], //0x1b31506f // ESP32C3 eco3
+  [9, new ESP32S3ROM()], //0x09
+  [1990, new ESP32S2ROM()], //0x000007c6
+  [4293968129, new ESP8266ROM()], //0xfff0c101
+]);
 
 interface fileType {
   data: Uint8Array;
@@ -67,49 +72,29 @@ export class ESPLoader {
 
   public transport: Transport;
   public baudrate: number;
-  public terminal: string;
   public IS_STUB: boolean;
   public chip?: BaseDevice;
 
   //
   public FLASH_WRITE_SIZE: number;
 
-  constructor(transport: Transport, baudrate: number, terminal: string) {
+  constructor(transport: Transport, baudrate: number) {
     this.transport = transport;
     this.baudrate = baudrate;
-    this.terminal = terminal;
     this.IS_STUB = false;
     this.chip = undefined; //TODO: was null
 
     // TODO: wasn't here
     this.FLASH_WRITE_SIZE = 0xff; // not sure of value
 
-    if (terminal) {
-      //   this.terminal.clear();
-    }
-
-    this.log("esptool.js v0.1-dev");
-    this.log(`Serial port ${this.transport.get_info()}`);
+    console.log("esptool.js v0.1-dev");
+    console.log(`Serial port ${this.transport.get_info()}`);
   }
 
   public _sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  public log(str: string) {
-    if (this.terminal) {
-      //   this.terminal.writeln(str);
-    } else {
-      console.log(str);
-    }
-  }
-  public write_char(str: string) {
-    if (this.terminal) {
-      //   this.terminal.write(str);
-    } else {
-      console.log(str);
-    }
-  }
   public _short_to_bytearray(i: number) {
     return [i & 0xff, (i >> 8) & 0xff];
   }
@@ -333,7 +318,7 @@ export class ESPLoader {
         i += res.length;
         //console.log("Len = " + res.length);
         //const str = new TextDecoder().decode(res);
-        //this.log(str);
+        //console.log(str);
       } catch (e) {
         if (e instanceof TimeoutError) {
           break;
@@ -350,9 +335,9 @@ export class ESPLoader {
       } catch (error) {
         if (error instanceof TimeoutError) {
           if (esp32r0_delay) {
-            this.write_char("_");
+            console.log("_");
           } else {
-            this.write_char(".");
+            console.log(".");
           }
         }
       }
@@ -368,7 +353,7 @@ export class ESPLoader {
   } = {}) {
     let resp;
     this.chip = undefined;
-    this.write_char("Connecting...");
+    console.log("Connecting...");
     await this.transport.connect();
     for (let i = 0; i < attempts; i++) {
       resp = await this._connect_attempt({ mode: mode, esp32r0_delay: false });
@@ -383,8 +368,8 @@ export class ESPLoader {
     if (resp !== "success") {
       throw new ESPError("Failed to connect with the device");
     }
-    this.write_char("\n");
-    this.write_char("\r");
+    console.log("\n");
+    console.log("\r");
     await this.flush_input();
 
     if (!detecting) {
@@ -392,9 +377,9 @@ export class ESPLoader {
         (await this.read_reg({ addr: 0x40001000 })) >>> 0;
       console.log(`Chip Magic ${chip_magic_value.toString(16)}`);
 
-      if (chip_magic_value in MAGIC_TO_CHIP) {
+      if (MAGIC_TO_CHIP.has(chip_magic_value)) {
         //@ts-ignore
-        this.chip = (await MAGIC_TO_CHIP[chip_magic_value]()).default;
+        this.chip = MAGIC_TO_CHIP.get(chip_magic_value);
       } else {
         throw new ESPError(
           `Unexpected CHIP magic value ${chip_magic_value}. Failed to autodetect chip type.`
@@ -405,9 +390,9 @@ export class ESPLoader {
 
   public async detect_chip({ mode = "default_reset" } = {}) {
     await this.connect({ mode: mode });
-    this.write_char("Detecting chip type... ");
+    console.log("Detecting chip type... ");
     if (this.chip != null) {
-      this.log(this.chip.CHIP_NAME);
+      console.log(this.chip.CHIP_NAME);
     }
   }
 
@@ -556,7 +541,7 @@ export class ESPLoader {
 
     const t2 = d.getTime();
     if (size != 0 && this.IS_STUB == false) {
-      this.log(
+      console.log(
         `Took ${(t2 - t1) / 1000}.${(t2 - t1) % 1000}s to erase flash block`
       );
     }
@@ -592,7 +577,7 @@ export class ESPLoader {
         write_size
       );
     }
-    this.log(`Compressed ${size} bytes to ${compsize}`);
+    console.log(`Compressed ${size} bytes to ${compsize}`);
 
     let pkt = this._appendArray(
       this._int_to_bytearray(write_size),
@@ -617,7 +602,7 @@ export class ESPLoader {
     });
     const t2 = d.getTime();
     if (size != 0 && this.IS_STUB === false) {
-      this.log(
+      console.log(
         `Took ${(t2 - t1) / 1000}.${(t2 - t1) % 1000}s to erase flash block`
       );
     }
@@ -820,7 +805,7 @@ export class ESPLoader {
   }
 
   public async erase_flash() {
-    this.log("Erasing flash (this may take a while)...");
+    console.log("Erasing flash (this may take a while)...");
     let d = new Date();
     let t1 = d.getTime();
     let ret = await this.check_command({
@@ -830,7 +815,9 @@ export class ESPLoader {
     });
     d = new Date();
     let t2 = d.getTime();
-    this.log("Chip erase completed successfully in " + (t2 - t1) / 1000 + "s");
+    console.log(
+      "Chip erase completed successfully in " + (t2 - t1) / 1000 + "s"
+    );
     return ret;
   }
 
@@ -863,7 +850,7 @@ export class ESPLoader {
   }
 
   public async run_stub() {
-    this.log("Uploading stub...");
+    console.log("Uploading stub...");
     if (!this.chip) {
       throw new Error("chip not defined"); //TODO: make specific error.
     }
@@ -912,14 +899,14 @@ export class ESPLoader {
       await this.mem_block(data.slice(from_offs, to_offs), i);
     }
 
-    this.log("Running stub...");
+    console.log("Running stub...");
     await this.mem_finish(this.chip.ENTRY);
 
     // Check up-to next 100 packets to see if stub is running
     for (let i = 0; i < 100; i++) {
       const res = await this.transport.read({ timeout: 1000, min_data: 6 });
       if (res[0] === 79 && res[1] === 72 && res[2] === 65 && res[3] === 73) {
-        this.log("Stub running...");
+        console.log("Stub running...");
         this.IS_STUB = true;
         this.FLASH_WRITE_SIZE = 0x4000;
         return this.chip;
@@ -929,14 +916,14 @@ export class ESPLoader {
   }
 
   public async change_baud() {
-    this.log("Changing baudrate to " + this.baudrate);
+    console.log("Changing baudrate to " + this.baudrate);
     let second_arg = this.IS_STUB ? this.transport.baudRate : 0;
     let pkt = this._appendArray(
       this._int_to_bytearray(this.baudrate),
       this._int_to_bytearray(second_arg)
     );
     let resp = await this.command({ op: this.ESP_CHANGE_BAUDRATE, data: pkt });
-    this.log("Changed");
+    console.log("Changed");
     await this.transport.disconnect();
     await this._sleep(50);
     await this.transport.connect({ baud: this.baudrate });
@@ -951,10 +938,10 @@ export class ESPLoader {
       throw new Error("chip not defined"); //TODO: make specific error.
     }
     const chip = await this.chip.get_chip_description(this);
-    this.log(`Chip is ${chip}`);
-    this.log(`Features: ${await this.chip.get_chip_features(this)}`);
-    this.log(`Crystal is ${await this.chip.get_crystal_freq(this)} MHz`);
-    this.log(`MAC: ${await this.chip.read_mac(this)}`);
+    console.log(`Chip is ${chip}`);
+    console.log(`Features: ${await this.chip.get_chip_features(this)}`);
+    console.log(`Crystal is ${await this.chip.get_crystal_freq(this)} MHz`);
+    console.log(`MAC: ${await this.chip.read_mac(this)}`);
     await this.chip.read_mac(this);
 
     if (typeof this.chip._post_connect != "undefined") {
@@ -1027,7 +1014,7 @@ export class ESPLoader {
     let flash_size_freq = parseInt(image[3]); //TODO: parseInt wasn't here before
     if (parseInt(magic) !== this.ESP_IMAGE_MAGIC) {
       //TODO: parseInt wasn't here before
-      this.log(
+      console.log(
         `Warning: Image file at 0x${address.toString(
           16
         )} doesn't look like an image file, so not changing any flash settings.`
@@ -1064,7 +1051,7 @@ export class ESPLoader {
     }
 
     const flash_params = (a_flash_mode << 8) | (a_flash_freq + a_flash_size);
-    this.log(`Flash params set to ${flash_params.toString(16)}`);
+    console.log(`Flash params set to ${flash_params.toString(16)}`);
     if (parseInt(image[2]) !== a_flash_mode << 8) {
       //@ts-ignore
       image[2] = a_flash_mode << 8;
@@ -1131,7 +1118,7 @@ export class ESPLoader {
       address = fileArray[i].address;
       console.log(`Image Length ${image.length}`);
       if (image.length === 0) {
-        this.log("Warning: File is empty");
+        console.log("Warning: File is empty");
         continue;
       }
       image = this._update_image_flash_params(
@@ -1169,7 +1156,7 @@ export class ESPLoader {
       let timeout = 5000;
       while (image.length > 0) {
         console.log(`Write loop ${address} ${seq} ${blocks}`);
-        this.log(
+        console.log(
           `Writing at 0x${(address + seq * this.FLASH_WRITE_SIZE).toString(
             16
           )}... (${Math.floor((100 * (seq + 1)) / blocks)}%)`
@@ -1210,7 +1197,7 @@ export class ESPLoader {
       d = new Date();
       let t = d.getTime() - t1;
       if (compress) {
-        this.log(
+        console.log(
           `Wrote ${uncsize} bytes (${bytes_sent} compressed) at 0x${address.toString(
             16
           )} in ${t / 1000} seconds`
@@ -1219,15 +1206,15 @@ export class ESPLoader {
       if (calculateMD5Hash) {
         const res = await this.flash_md5sum(address, uncsize);
         if (new String(res).valueOf() != new String(calcmd5).valueOf()) {
-          this.log(`File  md5: ${calcmd5}`);
-          this.log(`Flash md5: ${res}`);
+          console.log(`File  md5: ${calcmd5}`);
+          console.log(`Flash md5: ${res}`);
           throw new ESPError("MD5 of file does not match data in flash!");
         } else {
-          this.log("Hash of data verified.");
+          console.log("Hash of data verified.");
         }
       }
     }
-    this.log("Leaving...");
+    console.log("Leaving...");
 
     if (this.IS_STUB) {
       await this.flash_begin(0, 0);
@@ -1242,14 +1229,14 @@ export class ESPLoader {
   public async flash_id() {
     console.log("flash_id");
     const flashid = await this.read_flash_id();
-    this.log(`Manufacturer: ${(flashid & 0xff).toString(16)}`);
+    console.log(`Manufacturer: ${(flashid & 0xff).toString(16)}`);
     const flid_lowbyte = (flashid >> 16) & 0xff;
-    this.log(
+    console.log(
       `Device: ${((flashid >> 8) & 0xff).toString(16)}${flid_lowbyte.toString(
         16
       )}`
     );
-    this.log(
+    console.log(
       `Detected flash size: ${this.DETECTED_FLASH_SIZES.get(flid_lowbyte)}`
     ); //TODO: check that map.get works, was index notation before
   }

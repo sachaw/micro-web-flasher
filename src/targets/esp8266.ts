@@ -225,7 +225,7 @@ export class ESP8266ROM extends BaseDevice {
       norm_xtal = 26;
     }
     if (Math.abs(norm_xtal - ets_xtal) > 1) {
-      loader.log(
+      console.log(
         "WARNING: Detected crystal freq " +
           ets_xtal +
           "MHz is quite different to normalized freq " +
@@ -258,7 +258,7 @@ export class ESP8266ROM extends BaseDevice {
       mac[1] = 0xd0;
       mac[2] = 0x74;
     } else {
-      loader.log("Unknown OUI");
+      console.log("Unknown OUI");
     }
 
     mac[3] = (mac1 >> 8) & 0xff;

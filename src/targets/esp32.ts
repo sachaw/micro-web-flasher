@@ -245,7 +245,7 @@ export class ESP32ROM extends BaseDevice {
       norm_xtal = 26;
     }
     if (Math.abs(norm_xtal - ets_xtal) > 1) {
-      loader.log("WARNING: Unsupported crystal in use");
+      console.log("WARNING: Unsupported crystal in use");
     }
     return norm_xtal;
   };
