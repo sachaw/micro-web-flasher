@@ -104,6 +104,12 @@ export class ESP32S2ROM extends BaseDevice {
     "5lUGBV+inIf/Am8w8EfhMoci6RMleHnQiuD71XzwevARlL/cmi84gg9/L+TC1aFI" +
     "PhaAOeuxgvFPCyIcXl5oXscBJKBdOTgbirB0QdA+obr/HyfMWQisDwAA";
 
+  constructor() {
+    super();
+  }
+
+  public _post_connect() {}
+
   public get_pkg_version = async (loader: ESPLoader) => {
     var num_word = 3;
     var block1_addr = this.EFUSE_BASE + 0x044;

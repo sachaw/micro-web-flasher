@@ -28,9 +28,12 @@ export class ESP8266ROM extends BaseDevice {
   public SPI_USR_OFFS = 0x1c;
   public SPI_USR1_OFFS = 0x20;
   public SPI_USR2_OFFS = 0x24;
-  public SPI_MOSI_DLEN_OFFS = null;
-  public SPI_MISO_DLEN_OFFS = null;
+  public SPI_MOSI_DLEN_OFFS = undefined;
+  public SPI_MISO_DLEN_OFFS = undefined;
   public SPI_W0_OFFS = 0x40;
+
+  public UART_DATE_REG_ADDR = undefined;
+  public IMAGE_CHIP_ID = undefined;
 
   public TEXT_START = 0x4010e000;
   public ENTRY = 0x4010e004;
@@ -181,6 +184,12 @@ export class ESP8266ROM extends BaseDevice {
     "RQE0Xn5Dx9LZM9R2b8CAQ9BCCK6EovIPo9kzKAMGpsbWxFD2DJbVKxGEUNHscjtL" +
     "J4beSjfPH4hJ+tFtSdkibccBEOH+kJSrSew2MdSz8C5GWch459cfjuMcT0Pvo0yI" +
     "bcqT/wWthFLmqB8AAA==";
+
+  constructor() {
+    super();
+  }
+
+  public _post_connect() {}
 
   public read_efuse = async (loader: ESPLoader, offset: number) => {
     var addr = this.EFUSE_RD_REG_BASE + 4 * offset;

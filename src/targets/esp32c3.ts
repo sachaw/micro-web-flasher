@@ -94,6 +94,12 @@ export class ESP32C3ROM extends BaseDevice {
     "pnltVv+9jvHXkU4sXKfxG0NqhL7U68N6/PpKeyfjl0o+XMA5N/wc9+g6UfWl9s83" +
     "J279YCuxbUpfYBg26DI+z0jM/CCTyLqft1P4h/4HprTSLAwNAAA=";
 
+  constructor() {
+    super();
+  }
+
+  public _post_connect() {}
+
   public get_pkg_version = async (loader: ESPLoader) => {
     const num_word = 3;
     const block1_addr = this.EFUSE_BASE + 0x044;

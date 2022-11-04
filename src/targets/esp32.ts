@@ -99,6 +99,8 @@ export class ESP32ROM extends BaseDevice {
     super();
   }
 
+  public _post_connect() {}
+
   public async read_efuse(loader: ESPLoader, offset: number): Promise<number> {
     const addr = this.EFUSE_RD_REG_BASE + 4 * offset;
     console.log("Read efuse " + addr);

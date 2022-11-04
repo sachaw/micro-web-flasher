@@ -1,6 +1,6 @@
 import { TimeoutError } from './error.js';
 
-class Transport {
+export class Transport {
   public device: SerialPort;
   public slip_reader_enabled: boolean;
   public left_over: Uint8Array;
@@ -56,14 +56,14 @@ class Transport {
 
   async write(data: Uint8Array) {
     const writer = this.device.writable?.getWriter();
-    var out_data = this.slip_writer(data);
+    const out_data = this.slip_writer(data);
 
     await writer?.write(new Uint8Array(out_data.buffer));
     writer?.releaseLock();
   }
 
   _appendBuffer(buffer1: Uint8Array, buffer2: Uint8Array) {
-    var tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+    const tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
     tmp.set(new Uint8Array(buffer1), 0);
     tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
     return tmp.buffer;
@@ -72,11 +72,10 @@ class Transport {
   /* this function expects complete packet (hence reader reads for atleast 8 bytes. This function is
    * stateless and returns the first wellformed packet only after replacing escape sequence */
   slip_reader(data: Uint8Array) {
-    var i = 0;
-    var data_start = 0,
+    let i = 0;
+    let data_start = 0,
       data_end = 0;
-    var state = "init";
-    var packet, temp_pkt;
+    let state = "init";
     while (i < data.length) {
       if (state === "init" && data[i] == 0xc0) {
         data_start = i + 1;
@@ -112,8 +111,7 @@ class Transport {
       }
       temp_pkt[j] = data[i];
     }
-    packet = temp_pkt.slice(0, j); /* Remove unused bytes due to escape seq */
-    return packet;
+    return temp_pkt.slice(0, j); /* Remove unused bytes due to escape seq */
   }
 
   async read({ timeout = 0, min_data = 12 } = {}) {
@@ -131,26 +129,33 @@ class Transport {
     }
 
     const reader = this.device.readable?.getReader();
+    if (!reader) {
+      throw new Error("reader not defined"); //TODO: make specific error.
+    }
     try {
       if (timeout > 0) {
         t = setTimeout(function () {
-          reader?.cancel();
+          reader.cancel();
         }, timeout);
       }
       do {
-        const { value, done } = await reader?.read();
+        const { value, done } = await reader.read();
         if (done) {
           this.left_over = packet;
           throw new TimeoutError("Timeout");
         }
-        var p = new Uint8Array(this._appendBuffer(packet.buffer, value.buffer));
-        packet = p;
+        packet = new Uint8Array(
+          this._appendBuffer(
+            new Uint8Array(packet.buffer),
+            new Uint8Array(value.buffer)
+          )
+        );
       } while (packet.length < min_data);
     } finally {
       if (timeout > 0) {
         clearTimeout(t);
       }
-      reader?.releaseLock();
+      reader.releaseLock();
     }
     if (this.slip_reader_enabled) {
       return this.slip_reader(packet);
@@ -165,14 +170,17 @@ class Transport {
       return p;
     }
     const reader = this.device.readable?.getReader();
+    if (!reader) {
+      throw new Error("reader not defined"); //TODO: make specific error.
+    }
     let t;
     try {
       if (timeout > 0) {
         t = setTimeout(function () {
-          reader?.cancel();
+          reader.cancel();
         }, timeout);
       }
-      const { value, done } = await reader?.read();
+      const { value, done } = await reader.read();
       if (done) {
         throw new TimeoutError("Timeout");
       }
@@ -181,7 +189,7 @@ class Transport {
       if (timeout > 0) {
         clearTimeout(t);
       }
-      reader?.releaseLock();
+      reader.releaseLock();
     }
   }
 
@@ -203,5 +211,3 @@ class Transport {
     await this.device.close();
   }
 }
-
-export { Transport };

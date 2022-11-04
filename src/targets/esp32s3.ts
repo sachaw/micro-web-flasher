@@ -119,6 +119,18 @@ export class ESP32S3ROM extends BaseDevice {
     "A6EOOkSXLzPI/0905+E35NsMZL5N2dQx7VQhTldrENTvyi1fQDWenT4lm8tQK+l3" +
     "KW+3NnXYMAdbYwkNHP1ZTgd8RtiVeVq1Sv50vbRlrKlDTZc48SKV/f8Zky2A";
 
+  constructor() {
+    super();
+  }
+
+  public _post_connect = async (loader: ESPLoader) => {
+    var buf_no = (await loader.read_reg({ addr: this.UARTDEV_BUF_NO })) & 0xff;
+    console.log("In _post_connect " + buf_no);
+    if (buf_no == this.UARTDEV_BUF_NO_USB) {
+      loader.ESP_RAM_BLOCK = this.USB_RAM_BLOCK;
+    }
+  };
+
   public get_chip_description = async (loader: ESPLoader) => {
     return "ESP32-S3";
   };
@@ -127,14 +139,6 @@ export class ESP32S3ROM extends BaseDevice {
   };
   public get_crystal_freq = async (loader: ESPLoader) => {
     return 40;
-  };
-
-  public _post_connect = async (loader: ESPLoader) => {
-    var buf_no = (await loader.read_reg({ addr: this.UARTDEV_BUF_NO })) & 0xff;
-    console.log("In _post_connect " + buf_no);
-    if (buf_no == this.UARTDEV_BUF_NO_USB) {
-      loader.ESP_RAM_BLOCK = this.USB_RAM_BLOCK;
-    }
   };
 
   public read_mac = async (loader: ESPLoader) => {
