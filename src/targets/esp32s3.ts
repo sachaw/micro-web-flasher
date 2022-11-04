@@ -123,28 +123,29 @@ export class ESP32S3ROM extends BaseDevice {
     super();
   }
 
-  public _post_connect = async (loader: ESPLoader) => {
-    var buf_no = (await loader.read_reg({ addr: this.UARTDEV_BUF_NO })) & 0xff;
+  public postConnect = async (loader: ESPLoader) => {
+    var buf_no =
+      (await loader.readRegister({ addr: this.UARTDEV_BUF_NO })) & 0xff;
     console.log("In _post_connect " + buf_no);
     if (buf_no == this.UARTDEV_BUF_NO_USB) {
       loader.ESP_RAM_BLOCK = this.USB_RAM_BLOCK;
     }
   };
 
-  public get_chip_description = async (loader: ESPLoader) => {
+  public getChipDescription = async (loader: ESPLoader) => {
     return "ESP32-S3";
   };
-  public get_chip_features = async (loader: ESPLoader) => {
+  public getChipFeatures = async (loader: ESPLoader) => {
     return ["Wi-Fi", "BLE"];
   };
-  public get_crystal_freq = async (loader: ESPLoader) => {
+  public getCrystalFreq = async (loader: ESPLoader) => {
     return 40;
   };
 
-  public read_mac = async (loader: ESPLoader) => {
-    var mac0 = await loader.read_reg({ addr: this.MAC_EFUSE_REG });
+  public readMac = async (loader: ESPLoader) => {
+    var mac0 = await loader.readRegister({ addr: this.MAC_EFUSE_REG });
     mac0 = mac0 >>> 0;
-    var mac1 = await loader.read_reg({ addr: this.MAC_EFUSE_REG + 4 });
+    var mac1 = await loader.readRegister({ addr: this.MAC_EFUSE_REG + 4 });
     mac1 = (mac1 >>> 0) & 0x0000ffff;
     var mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;

@@ -99,12 +99,12 @@ export class ESP32ROM extends BaseDevice {
     super();
   }
 
-  public _post_connect() {}
+  public postConnect() {}
 
   public async read_efuse(loader: ESPLoader, offset: number): Promise<number> {
     const addr = this.EFUSE_RD_REG_BASE + 4 * offset;
     console.log("Read efuse " + addr);
-    return await loader.read_reg({ addr: addr });
+    return await loader.readRegister({ addr: addr });
   }
 
   public get_pkg_version = async (loader: ESPLoader) => {
@@ -117,7 +117,7 @@ export class ESP32ROM extends BaseDevice {
   public get_chip_revision = async (loader: ESPLoader) => {
     const word3 = await this.read_efuse(loader, 3);
     const word5 = await this.read_efuse(loader, 5);
-    const apb_ctl_date = await loader.read_reg({
+    const apb_ctl_date = await loader.readRegister({
       addr: this.DR_REG_SYSCON_BASE + 0x7c,
     });
 
@@ -138,7 +138,7 @@ export class ESP32ROM extends BaseDevice {
     return 0;
   };
 
-  public get_chip_description = async (loader: ESPLoader) => {
+  public getChipDescription = async (loader: ESPLoader) => {
     const chip_desc = [
       "ESP32-D0WDQ6",
       "ESP32-D0WD",
@@ -173,7 +173,7 @@ export class ESP32ROM extends BaseDevice {
     return chip_name + " (revision " + chip_revision + ")";
   };
 
-  public get_chip_features = async (loader: ESPLoader) => {
+  public getChipFeatures = async (loader: ESPLoader) => {
     const features = ["Wi-Fi"];
     const word3 = await this.read_efuse(loader, 3);
 
@@ -232,9 +232,9 @@ export class ESP32ROM extends BaseDevice {
     return features;
   };
 
-  public get_crystal_freq = async (loader: ESPLoader) => {
+  public getCrystalFreq = async (loader: ESPLoader) => {
     const uart_div =
-      (await loader.read_reg({ addr: this.UART_CLKDIV_REG })) &
+      (await loader.readRegister({ addr: this.UART_CLKDIV_REG })) &
       this.UART_CLKDIV_MASK;
     const ets_xtal =
       (loader.transport.baudRate * uart_div) / 1000000 / this.XTAL_CLK_DIVIDER;
@@ -250,7 +250,7 @@ export class ESP32ROM extends BaseDevice {
     return norm_xtal;
   };
 
-  public read_mac = async (loader: ESPLoader) => {
+  public readMac = async (loader: ESPLoader) => {
     let mac0 = await this.read_efuse(loader, 1);
     mac0 = mac0 >>> 0;
     let mac1 = await this.read_efuse(loader, 2);

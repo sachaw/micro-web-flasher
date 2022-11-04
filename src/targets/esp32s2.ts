@@ -108,18 +108,18 @@ export class ESP32S2ROM extends BaseDevice {
     super();
   }
 
-  public _post_connect() {}
+  public postConnect() {}
 
   public get_pkg_version = async (loader: ESPLoader) => {
     var num_word = 3;
     var block1_addr = this.EFUSE_BASE + 0x044;
     var addr = block1_addr + 4 * num_word;
-    var word3 = await loader.read_reg({ addr: addr });
+    var word3 = await loader.readRegister({ addr: addr });
     var pkg_version = (word3 >> 21) & 0x0f;
     return pkg_version;
   };
 
-  public get_chip_description = async (loader: ESPLoader) => {
+  public getChipDescription = async (loader: ESPLoader) => {
     var chip_desc = ["ESP32-S2", "ESP32-S2FH16", "ESP32-S2FH32"];
     var pkg_ver = await this.get_pkg_version(loader);
     if (pkg_ver >= 0 && pkg_ver <= 2) {
@@ -129,7 +129,7 @@ export class ESP32S2ROM extends BaseDevice {
     }
   };
 
-  public get_chip_features = async (loader: ESPLoader) => {
+  public getChipFeatures = async (loader: ESPLoader) => {
     var features = ["Wi-Fi"];
     var pkg_ver = await this.get_pkg_version(loader);
     if (pkg_ver == 1) {
@@ -140,7 +140,7 @@ export class ESP32S2ROM extends BaseDevice {
     var num_word = 4;
     var block2_addr = this.EFUSE_BASE + 0x05c;
     var addr = block2_addr + 4 * num_word;
-    var word4 = await loader.read_reg({ addr: addr });
+    var word4 = await loader.readRegister({ addr: addr });
     var block2_ver = (word4 >> 4) & 0x07;
 
     if (block2_ver == 1) {
@@ -149,14 +149,14 @@ export class ESP32S2ROM extends BaseDevice {
     return features;
   };
 
-  public get_crystal_freq = async (loader: ESPLoader) => {
+  public getCrystalFreq = async (loader: ESPLoader) => {
     return 40;
   };
 
-  public read_mac = async (loader: ESPLoader) => {
-    var mac0 = await loader.read_reg({ addr: this.MAC_EFUSE_REG });
+  public readMac = async (loader: ESPLoader) => {
+    var mac0 = await loader.readRegister({ addr: this.MAC_EFUSE_REG });
     mac0 = mac0 >>> 0;
-    var mac1 = await loader.read_reg({ addr: this.MAC_EFUSE_REG + 4 });
+    var mac1 = await loader.readRegister({ addr: this.MAC_EFUSE_REG + 4 });
     mac1 = (mac1 >>> 0) & 0x0000ffff;
     var mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;

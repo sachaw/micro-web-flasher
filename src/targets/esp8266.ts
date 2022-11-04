@@ -189,15 +189,15 @@ export class ESP8266ROM extends BaseDevice {
     super();
   }
 
-  public _post_connect() {}
+  public postConnect() {}
 
   public read_efuse = async (loader: ESPLoader, offset: number) => {
     var addr = this.EFUSE_RD_REG_BASE + 4 * offset;
     console.log("Read efuse " + addr);
-    return await loader.read_reg({ addr: addr });
+    return await loader.readRegister({ addr: addr });
   };
 
-  public get_chip_description = async (loader: ESPLoader) => {
+  public getChipDescription = async (loader: ESPLoader) => {
     var efuse3 = await this.read_efuse(loader, 2);
     var efuse0 = await this.read_efuse(loader, 0);
 
@@ -205,16 +205,16 @@ export class ESP8266ROM extends BaseDevice {
     return is_8285 ? "ESP8285" : "ESP8266EX";
   };
 
-  public get_chip_features = async (loader: ESPLoader) => {
+  public getChipFeatures = async (loader: ESPLoader) => {
     var features = ["WiFi"];
-    if ((await this.get_chip_description(loader)) == "ESP8285")
+    if ((await this.getChipDescription(loader)) == "ESP8285")
       features.push("Embedded Flash");
     return features;
   };
 
-  public get_crystal_freq = async (loader: ESPLoader) => {
+  public getCrystalFreq = async (loader: ESPLoader) => {
     var uart_div =
-      (await loader.read_reg({ addr: this.UART_CLKDIV_REG })) &
+      (await loader.readRegister({ addr: this.UART_CLKDIV_REG })) &
       this.UART_CLKDIV_MASK;
     var ets_xtal =
       (loader.transport.baudRate * uart_div) / 1000000 / this.XTAL_CLK_DIVIDER;
@@ -236,7 +236,7 @@ export class ESP8266ROM extends BaseDevice {
     return norm_xtal;
   };
 
-  public read_mac = async (loader: ESPLoader) => {
+  public readMac = async (loader: ESPLoader) => {
     var mac0 = await this.read_efuse(loader, 0);
     mac0 = mac0 >>> 0;
     var mac1 = await this.read_efuse(loader, 1);

@@ -35,15 +35,15 @@ export abstract class BaseDevice {
     return h.length === 1 ? "0" + h : h;
   }
 
-  public abstract get_chip_description(loader: ESPLoader): void;
+  public abstract getChipDescription(loader: ESPLoader): void;
 
-  public abstract get_chip_features(loader: ESPLoader): void;
+  public abstract getChipFeatures(loader: ESPLoader): void;
 
-  public abstract get_crystal_freq(loader: ESPLoader): void;
+  public abstract getCrystalFreq(loader: ESPLoader): void;
 
-  public abstract read_mac(loader: ESPLoader): void;
+  public abstract readMac(loader: ESPLoader): Promise<string>;
 
-  public abstract _post_connect(loader: ESPLoader): void; //should be abstract
+  public abstract postConnect(loader: ESPLoader): void; //should be abstract
 
   // public abstract read_efuse(
   //   loader: ESPLoader,

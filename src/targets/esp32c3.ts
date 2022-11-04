@@ -98,13 +98,13 @@ export class ESP32C3ROM extends BaseDevice {
     super();
   }
 
-  public _post_connect() {}
+  public postConnect() {}
 
   public get_pkg_version = async (loader: ESPLoader) => {
     const num_word = 3;
     const block1_addr = this.EFUSE_BASE + 0x044;
     const addr = block1_addr + 4 * num_word;
-    const word3 = await loader.read_reg({ addr: addr });
+    const word3 = await loader.readRegister({ addr: addr });
     const pkg_version = (word3 >> 21) & 0x07;
     return pkg_version;
   };
@@ -114,11 +114,12 @@ export class ESP32C3ROM extends BaseDevice {
     const num_word = 3;
     const pos = 18;
     const addr = block1_addr + 4 * num_word;
-    const ret = ((await loader.read_reg({ addr: addr })) & (0x7 << pos)) >> pos;
+    const ret =
+      ((await loader.readRegister({ addr: addr })) & (0x7 << pos)) >> pos;
     return ret;
   };
 
-  public get_chip_description = async (loader: ESPLoader) => {
+  public getChipDescription = async (loader: ESPLoader) => {
     let desc;
     const pkg_ver = await this.get_pkg_version(loader);
     if (pkg_ver === 0) {
@@ -131,18 +132,18 @@ export class ESP32C3ROM extends BaseDevice {
     return desc;
   };
 
-  public get_chip_features = async (loader: ESPLoader) => {
+  public getChipFeatures = async (loader: ESPLoader) => {
     return ["Wi-Fi"];
   };
 
-  public get_crystal_freq = async (loader: ESPLoader) => {
+  public getCrystalFreq = async (loader: ESPLoader) => {
     return 40;
   };
 
-  public read_mac = async (loader: ESPLoader) => {
-    let mac0 = await loader.read_reg({ addr: this.MAC_EFUSE_REG });
+  public readMac = async (loader: ESPLoader) => {
+    let mac0 = await loader.readRegister({ addr: this.MAC_EFUSE_REG });
     mac0 = mac0 >>> 0;
-    let mac1 = await loader.read_reg({ addr: this.MAC_EFUSE_REG + 4 });
+    let mac1 = await loader.readRegister({ addr: this.MAC_EFUSE_REG + 4 });
     mac1 = (mac1 >>> 0) & 0x0000ffff;
     const mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;
