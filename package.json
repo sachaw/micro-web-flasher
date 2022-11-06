@@ -10,18 +10,28 @@
     }
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "format:check": "prettier --check . && eslint src/**/*.ts",
+    "format:fix": "prettier --write . && eslint --fix src/**/*.ts"
   },
   "keywords": [],
   "author": "",
   "license": "GPL-3.0-only",
   "devDependencies": {
     "@types/w3c-web-serial": "^1.0.3",
+    "@typescript-eslint/eslint-plugin": "^5.42.0",
+    "@typescript-eslint/parser": "^5.42.0",
+    "eslint": "^8.26.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-import-resolver-typescript": "^3.5.2",
+    "eslint-plugin-import": "^2.26.0",
+    "prettier": "^2.7.1",
     "typescript": "^4.8.4"
   },
   "dependencies": {
     "@types/pako": "^2.0.0",
     "pako": "^2.0.4",
-    "tslog": "^3.3.4"
+    "sub-events": "^1.9.0",
+    "tslog": "4.0.0-3"
   }
 }

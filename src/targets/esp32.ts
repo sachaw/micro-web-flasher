@@ -1,5 +1,5 @@
-import { ESPLoader } from '../ESPLoader.js';
-import { BaseDevice } from './base.js';
+import { ESPLoader } from "../ESPLoader.js";
+import { BaseDevice, ChipFeature } from "./base.js";
 
 export class ESP32ROM extends BaseDevice {
   public CHIP_NAME = "ESP32";
@@ -19,7 +19,7 @@ export class ESP32ROM extends BaseDevice {
     ["2MB", 0x10],
     ["4MB", 0x20],
     ["8MB", 0x30],
-    ["16MB", 0x40],
+    ["16MB", 0x40]
   ]);
 
   public SPI_REG_BASE = 0x3ff42000;
@@ -95,38 +95,36 @@ export class ESP32ROM extends BaseDevice {
     "YjiDW+mNANzr1LUT2ElJKyOShBjc24Bubh7Lmjp/Eifg5awjAiP9ZbJfx620qNfq" +
     "wqvdldrZOj9LCYJ8mer+L0DR4a0UDQAA";
 
-  constructor() {
-    super();
+  public postConnect() {
+    return Promise.resolve();
   }
 
-  public postConnect() {}
-
-  public async read_efuse(loader: ESPLoader, offset: number): Promise<number> {
-    const addr = this.EFUSE_RD_REG_BASE + 4 * offset;
-    console.log("Read efuse " + addr);
-    return await loader.readRegister({ addr: addr });
+  public async readEfuse(loader: ESPLoader, offset: number): Promise<number> {
+    const address = this.EFUSE_RD_REG_BASE + 4 * offset;
+    console.log(`Read efuse ${address}`);
+    return await loader.readRegister(address);
   }
 
-  public get_pkg_version = async (loader: ESPLoader) => {
-    const word3 = await this.read_efuse(loader, 3);
-    let pkg_version = (word3 >> 9) & 0x07;
-    pkg_version += ((word3 >> 2) & 0x1) << 3;
-    return pkg_version;
+  public getPkgVersion = async (loader: ESPLoader) => {
+    const word3 = await this.readEfuse(loader, 3);
+    let packageVersion = (word3 >> 9) & 0x07;
+    packageVersion += ((word3 >> 2) & 0x1) << 3;
+    return packageVersion;
   };
 
-  public get_chip_revision = async (loader: ESPLoader) => {
-    const word3 = await this.read_efuse(loader, 3);
-    const word5 = await this.read_efuse(loader, 5);
-    const apb_ctl_date = await loader.readRegister({
-      addr: this.DR_REG_SYSCON_BASE + 0x7c,
-    });
+  public getChipRevision = async (loader: ESPLoader) => {
+    const word3 = await this.readEfuse(loader, 3);
+    const word5 = await this.readEfuse(loader, 5);
+    const apbCtlDate = await loader.readRegister(
+      this.DR_REG_SYSCON_BASE + 0x7c
+    );
 
-    const rev_bit0 = (word3 >> 15) & 0x1;
-    const rev_bit1 = (word5 >> 20) & 0x1;
-    const rev_bit2 = (apb_ctl_date >> 31) & 0x1;
-    if (rev_bit0 != 0) {
-      if (rev_bit1 != 0) {
-        if (rev_bit2 != 0) {
+    const revBit0 = (word3 >> 15) & 0x1;
+    const revBit1 = (word5 >> 20) & 0x1;
+    const revBit2 = (apbCtlDate >> 31) & 0x1;
+    if (revBit0 != 0) {
+      if (revBit1 != 0) {
+        if (revBit2 != 0) {
           return 3;
         } else {
           return 2;
@@ -139,121 +137,121 @@ export class ESP32ROM extends BaseDevice {
   };
 
   public getChipDescription = async (loader: ESPLoader) => {
-    const chip_desc = [
+    const chipDescription = [
       "ESP32-D0WDQ6",
       "ESP32-D0WD",
       "ESP32-D2WD",
       "",
       "ESP32-U4WDH",
       "ESP32-PICO-D4",
-      "ESP32-PICO-V3-02",
+      "ESP32-PICO-V3-02"
     ];
-    let chip_name = "";
-    const pkg_version = await this.get_pkg_version(loader);
-    const chip_revision = await this.get_chip_revision(loader);
-    const rev3 = chip_revision == 3;
-    const single_core = (await this.read_efuse(loader, 3)) & (1 << 0);
+    let chipName = "";
+    const packageVersion = await this.getPkgVersion(loader);
+    const chipRevision = await this.getChipRevision(loader);
+    const rev3 = chipRevision == 3;
+    const singleCore = (await this.readEfuse(loader, 3)) & (1 << 0);
 
-    if (single_core != 0) {
-      chip_desc[0] = "ESP32-S0WDQ6";
-      chip_desc[1] = "ESP32-S0WD";
+    if (singleCore != 0) {
+      chipDescription[0] = "ESP32-S0WDQ6";
+      chipDescription[1] = "ESP32-S0WD";
     }
     if (rev3) {
-      chip_desc[5] = "ESP32-PICO-V3";
+      chipDescription[5] = "ESP32-PICO-V3";
     }
-    if (pkg_version >= 0 && pkg_version <= 6) {
-      chip_name = chip_desc[pkg_version];
+    if (packageVersion >= 0 && packageVersion <= 6) {
+      chipName = chipDescription[packageVersion];
     } else {
-      chip_name = "Unknown ESP32";
+      chipName = "Unknown ESP32";
     }
 
-    if (rev3 && (pkg_version === 0 || pkg_version === 1)) {
-      chip_name += "-V3";
+    if (rev3 && (packageVersion === 0 || packageVersion === 1)) {
+      chipName += "-V3";
     }
-    return chip_name + " (revision " + chip_revision + ")";
+    return `${chipName} (revision ${chipRevision}`;
   };
 
   public getChipFeatures = async (loader: ESPLoader) => {
-    const features = ["Wi-Fi"];
-    const word3 = await this.read_efuse(loader, 3);
+    const features = [ChipFeature.WiFi];
+    const word3 = await this.readEfuse(loader, 3);
 
-    const chip_ver_dis_bt = word3 & (1 << 1);
-    if (chip_ver_dis_bt === 0) {
-      features.push(" BT");
+    const chipVersionDisabledBluetooth = word3 & (1 << 1);
+    if (chipVersionDisabledBluetooth === 0) {
+      features.push(ChipFeature.BLE);
     }
 
-    const chip_ver_dis_app_cpu = word3 & (1 << 0);
-    if (chip_ver_dis_app_cpu !== 0) {
-      features.push(" Single Core");
+    const chipVersonDisabledAppCpu = word3 & (1 << 0);
+    if (chipVersonDisabledAppCpu !== 0) {
+      features.push(ChipFeature.SingleCore);
     } else {
-      features.push(" Dual Core");
+      features.push(ChipFeature.DualCore);
     }
 
-    const chip_cpu_freq_rated = word3 & (1 << 13);
-    if (chip_cpu_freq_rated !== 0) {
-      const chip_cpu_freq_low = word3 & (1 << 12);
-      if (chip_cpu_freq_low !== 0) {
-        features.push(" 160MHz");
+    const chipCpuFreqencyRated = word3 & (1 << 13);
+    if (chipCpuFreqencyRated !== 0) {
+      const chipCpuFreqencyLow = word3 & (1 << 12);
+      if (chipCpuFreqencyLow !== 0) {
+        features.push(ChipFeature.Frequency160MHz);
       } else {
-        features.push(" 240MHz");
+        features.push(ChipFeature.Frequency240MHz);
       }
     }
 
-    const pkg_version = await this.get_pkg_version(loader);
-    if ([2, 4, 5, 6].includes(pkg_version)) {
-      features.push(" Embedded Flash");
+    const packageVersion = await this.getPkgVersion(loader);
+    if ([2, 4, 5, 6].includes(packageVersion)) {
+      features.push(ChipFeature.EmbeddedFlash);
     }
 
-    if (pkg_version === 6) {
-      features.push(" Embedded PSRAM");
+    if (packageVersion === 6) {
+      features.push(ChipFeature.EmbeddedPSRAM);
     }
 
-    const word4 = await this.read_efuse(loader, 4);
-    const adc_vref = (word4 >> 8) & 0x1f;
-    if (adc_vref !== 0) {
-      features.push(" VRef calibration in efuse");
+    const word4 = await this.readEfuse(loader, 4);
+    const adcVref = (word4 >> 8) & 0x1f;
+    if (adcVref !== 0) {
+      features.push(ChipFeature.EfuseVRefCalibration);
     }
 
-    const blk3_part_res = (word3 >> 14) & 0x1;
-    if (blk3_part_res !== 0) {
-      features.push(" BLK3 partially reserved");
+    const blk3PartiallyReserved = (word3 >> 14) & 0x1;
+    if (blk3PartiallyReserved !== 0) {
+      features.push(ChipFeature.BLK3PartiallyReserved);
     }
 
-    const word6 = await this.read_efuse(loader, 6);
-    const coding_scheme = word6 & 0x3;
-    const coding_scheme_arr = [
-      "None",
-      "3/4",
-      "Repeat (UNSUPPORTED)",
-      "Invalid",
+    const word6 = await this.readEfuse(loader, 6);
+    const codingScheme = word6 & 0x3;
+    const codingSchmeSelection = [
+      ChipFeature.CodingSchemeNone,
+      ChipFeature.CodingScheme3_4,
+      ChipFeature.CodingSchemeRepeat_UNSUPPORTED,
+      ChipFeature.CodingSchemeInvalid
     ];
-    features.push(" Coding Scheme " + coding_scheme_arr[coding_scheme]);
+
+    features.push(codingSchmeSelection[codingScheme]);
 
     return features;
   };
 
   public getCrystalFreq = async (loader: ESPLoader) => {
-    const uart_div =
-      (await loader.readRegister({ addr: this.UART_CLKDIV_REG })) &
-      this.UART_CLKDIV_MASK;
-    const ets_xtal =
-      (loader.transport.baudRate * uart_div) / 1000000 / this.XTAL_CLK_DIVIDER;
-    let norm_xtal: number;
-    if (ets_xtal > 33) {
-      norm_xtal = 40;
+    const uartDiv =
+      (await loader.readRegister(this.UART_CLKDIV_REG)) & this.UART_CLKDIV_MASK;
+    const etsXtal =
+      (loader.transport.baudRate * uartDiv) / 1000000 / this.XTAL_CLK_DIVIDER;
+    let normXtal: number;
+    if (etsXtal > 33) {
+      normXtal = 40;
     } else {
-      norm_xtal = 26;
+      normXtal = 26;
     }
-    if (Math.abs(norm_xtal - ets_xtal) > 1) {
+    if (Math.abs(normXtal - etsXtal) > 1) {
       console.log("WARNING: Unsupported crystal in use");
     }
-    return norm_xtal;
+    return normXtal;
   };
 
   public readMac = async (loader: ESPLoader) => {
-    let mac0 = await this.read_efuse(loader, 1);
+    let mac0 = await this.readEfuse(loader, 1);
     mac0 = mac0 >>> 0;
-    let mac1 = await this.read_efuse(loader, 2);
+    let mac1 = await this.readEfuse(loader, 2);
     mac1 = mac1 >>> 0;
     const mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;

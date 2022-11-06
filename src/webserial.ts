@@ -1,4 +1,4 @@
-import { TimeoutError } from './error.js';
+import { TimeoutError } from "./error.js";
 
 export class Transport {
   public device: SerialPort;
@@ -13,56 +13,53 @@ export class Transport {
     this.baudRate = 115200;
   }
 
-  get_info() {
+  public get_info() {
     const info = this.device.getInfo();
-    return (
-      "WebSerial VendorID 0x" +
-      info.usbVendorId?.toString(16) +
-      " ProductID 0x" +
-      info.usbProductId?.toString(16)
-    );
+    return `WebSerial VendorID 0x${
+      info.usbVendorId?.toString(16) ?? ""
+    } ProductID 0x${info.usbProductId?.toString(16) ?? ""}`;
   }
 
-  slip_writer(data: Uint8Array) {
-    let count_esc = 0;
+  public slip_writer(data: Uint8Array) {
+    let countEsc = 0;
     let i = 0,
       j = 0;
 
     for (i = 0; i < data.length; i++) {
       if (data[i] === 0xc0 || data[i] === 0xdb) {
-        count_esc++;
+        countEsc++;
       }
     }
-    const out_data = new Uint8Array(2 + count_esc + data.length);
-    out_data[0] = 0xc0;
+    const outputData = new Uint8Array(2 + countEsc + data.length);
+    outputData[0] = 0xc0;
     j = 1;
     for (i = 0; i < data.length; i++, j++) {
       if (data[i] === 0xc0) {
-        out_data[j++] = 0xdb;
-        out_data[j] = 0xdc;
+        outputData[j++] = 0xdb;
+        outputData[j] = 0xdc;
         continue;
       }
       if (data[i] === 0xdb) {
-        out_data[j++] = 0xdb;
-        out_data[j] = 0xdd;
+        outputData[j++] = 0xdb;
+        outputData[j] = 0xdd;
         continue;
       }
 
-      out_data[j] = data[i];
+      outputData[j] = data[i];
     }
-    out_data[j] = 0xc0;
-    return out_data;
+    outputData[j] = 0xc0;
+    return outputData;
   }
 
-  async write(data: Uint8Array) {
+  public async write(data: Uint8Array) {
     const writer = this.device.writable?.getWriter();
-    const out_data = this.slip_writer(data);
+    const outputData = this.slip_writer(data);
 
-    await writer?.write(new Uint8Array(out_data.buffer));
+    await writer?.write(new Uint8Array(outputData.buffer));
     writer?.releaseLock();
   }
 
-  _appendBuffer(buffer1: Uint8Array, buffer2: Uint8Array) {
+  public _appendBuffer(buffer1: Uint8Array, buffer2: Uint8Array) {
     const tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
     tmp.set(new Uint8Array(buffer1), 0);
     tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
@@ -71,20 +68,20 @@ export class Transport {
 
   /* this function expects complete packet (hence reader reads for atleast 8 bytes. This function is
    * stateless and returns the first wellformed packet only after replacing escape sequence */
-  slip_reader(data: Uint8Array) {
+  public slip_reader(data: Uint8Array) {
     let i = 0;
-    let data_start = 0,
-      data_end = 0;
+    let dataStart = 0;
+    let dataEnd = 0;
     let state = "init";
     while (i < data.length) {
       if (state === "init" && data[i] == 0xc0) {
-        data_start = i + 1;
+        dataStart = i + 1;
         state = "valid_data";
         i++;
         continue;
       }
       if (state === "valid_data" && data[i] == 0xc0) {
-        data_end = i - 1;
+        dataEnd = i - 1;
         state = "packet_complete";
         break;
       }
@@ -95,34 +92,34 @@ export class Transport {
       return new Uint8Array(0);
     }
 
-    this.left_over = data.slice(data_end + 2);
-    let temp_pkt = new Uint8Array(data_end - data_start + 1);
+    this.left_over = data.slice(dataEnd + 2);
+    const tempPacket = new Uint8Array(dataEnd - dataStart + 1);
     let j = 0;
-    for (i = data_start; i <= data_end; i++, j++) {
+    for (i = dataStart; i <= dataEnd; i++, j++) {
       if (data[i] === 0xdb && data[i + 1] === 0xdc) {
-        temp_pkt[j] = 0xc0;
+        tempPacket[j] = 0xc0;
         i++;
         continue;
       }
       if (data[i] === 0xdb && data[i + 1] === 0xdd) {
-        temp_pkt[j] = 0xdb;
+        tempPacket[j] = 0xdb;
         i++;
         continue;
       }
-      temp_pkt[j] = data[i];
+      tempPacket[j] = data[i];
     }
-    return temp_pkt.slice(0, j); /* Remove unused bytes due to escape seq */
+    return tempPacket.slice(0, j); /* Remove unused bytes due to escape seq */
   }
 
-  async read({ timeout = 0, min_data = 12 } = {}) {
-    console.log("Read with timeout " + timeout);
+  public async read({ timeout = 0, min_data: minData = 12 } = {}) {
+    // console.log(`Read with timeout ${timeout}`);
     let t;
     let packet = this.left_over;
     this.left_over = new Uint8Array(0);
     if (this.slip_reader_enabled) {
-      const val_final = this.slip_reader(packet);
-      if (val_final.length > 0) {
-        return val_final;
+      const valueFinal = this.slip_reader(packet);
+      if (valueFinal.length > 0) {
+        return valueFinal;
       }
       packet = this.left_over;
       this.left_over = new Uint8Array(0);
@@ -134,8 +131,8 @@ export class Transport {
     }
     try {
       if (timeout > 0) {
-        t = setTimeout(function () {
-          reader.cancel();
+        t = setTimeout(async () => {
+          await reader.cancel();
         }, timeout);
       }
       do {
@@ -150,7 +147,7 @@ export class Transport {
             new Uint8Array(value.buffer)
           )
         );
-      } while (packet.length < min_data);
+      } while (packet.length < minData);
     } finally {
       if (timeout > 0) {
         clearTimeout(t);
@@ -163,7 +160,7 @@ export class Transport {
     return packet;
   }
 
-  async rawRead({ timeout = 0 } = {}) {
+  public async rawRead(timeout: number) {
     if (this.left_over.length != 0) {
       const p = this.left_over;
       this.left_over = new Uint8Array(0);
@@ -176,8 +173,8 @@ export class Transport {
     let t;
     try {
       if (timeout > 0) {
-        t = setTimeout(function () {
-          reader.cancel();
+        t = setTimeout(async () => {
+          await reader.cancel();
         }, timeout);
       }
       const { value, done } = await reader.read();
@@ -193,21 +190,21 @@ export class Transport {
     }
   }
 
-  async setRTS(state: boolean) {
+  public async setRTS(state: boolean) {
     await this.device.setSignals({ requestToSend: state });
   }
 
-  async setDTR(state: boolean) {
+  public async setDTR(state: boolean) {
     await this.device.setSignals({ dataTerminalReady: state });
   }
 
-  async connect({ baud = 115200 } = {}) {
+  public async connect({ baud = 115200 } = {}) {
     await this.device.open({ baudRate: baud });
     this.baudRate = baud;
     this.left_over = new Uint8Array(0);
   }
 
-  async disconnect() {
+  public async disconnect() {
     await this.device.close();
   }
 }

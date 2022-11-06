@@ -1,5 +1,5 @@
-import { ESPLoader } from '../ESPLoader.js';
-import { BaseDevice } from './base.js';
+import { ESPLoader } from "../ESPLoader.js";
+import { BaseDevice, ChipFeature } from "./base.js";
 
 export class ESP32C3ROM extends BaseDevice {
   public CHIP_NAME = "ESP32-C3";
@@ -18,7 +18,7 @@ export class ESP32C3ROM extends BaseDevice {
     ["2MB", 0x10],
     ["4MB", 0x20],
     ["8MB", 0x30],
-    ["16MB", 0x40],
+    ["16MB", 0x40]
   ]);
 
   public SPI_REG_BASE = 0x60002000;
@@ -94,56 +94,49 @@ export class ESP32C3ROM extends BaseDevice {
     "pnltVv+9jvHXkU4sXKfxG0NqhL7U68N6/PpKeyfjl0o+XMA5N/wc9+g6UfWl9s83" +
     "J279YCuxbUpfYBg26DI+z0jM/CCTyLqft1P4h/4HprTSLAwNAAA=";
 
-  constructor() {
-    super();
+  public postConnect() {
+    return Promise.resolve();
   }
 
-  public postConnect() {}
-
-  public get_pkg_version = async (loader: ESPLoader) => {
-    const num_word = 3;
-    const block1_addr = this.EFUSE_BASE + 0x044;
-    const addr = block1_addr + 4 * num_word;
-    const word3 = await loader.readRegister({ addr: addr });
-    const pkg_version = (word3 >> 21) & 0x07;
-    return pkg_version;
+  public getPackageVersion = async (loader: ESPLoader) => {
+    const numWord = 3;
+    const block1Address = this.EFUSE_BASE + 0x044;
+    const address = block1Address + 4 * numWord;
+    const word3 = await loader.readRegister(address);
+    const packageVersion = (word3 >> 21) & 0x07;
+    return packageVersion;
   };
 
-  public get_chip_revision = async (loader: ESPLoader) => {
-    const block1_addr = this.EFUSE_BASE + 0x044;
-    const num_word = 3;
+  public getChipRevision = async (loader: ESPLoader) => {
+    const block1Address = this.EFUSE_BASE + 0x044;
+    const numWord = 3;
     const pos = 18;
-    const addr = block1_addr + 4 * num_word;
-    const ret =
-      ((await loader.readRegister({ addr: addr })) & (0x7 << pos)) >> pos;
+    const address = block1Address + 4 * numWord;
+    const ret = ((await loader.readRegister(address)) & (0x7 << pos)) >> pos;
     return ret;
   };
 
   public getChipDescription = async (loader: ESPLoader) => {
-    let desc;
-    const pkg_ver = await this.get_pkg_version(loader);
-    if (pkg_ver === 0) {
-      desc = "ESP32-C3";
-    } else {
-      desc = "unknown ESP32-C3";
-    }
-    const chip_rev = await this.get_chip_revision(loader);
-    desc += " (revision " + chip_rev + ")";
-    return desc;
+    const packageVersion = await this.getPackageVersion(loader);
+    const chipRevision = await this.getChipRevision(loader);
+
+    return `${
+      packageVersion !== 0 ? "Unknown" : ""
+    } ESP32-C3 (revision ${chipRevision})`;
   };
 
-  public getChipFeatures = async (loader: ESPLoader) => {
-    return ["Wi-Fi"];
+  public getChipFeatures = () => {
+    return Promise.resolve([ChipFeature.WiFi]);
   };
 
-  public getCrystalFreq = async (loader: ESPLoader) => {
-    return 40;
+  public getCrystalFreq = () => {
+    return Promise.resolve(40);
   };
 
   public readMac = async (loader: ESPLoader) => {
-    let mac0 = await loader.readRegister({ addr: this.MAC_EFUSE_REG });
+    let mac0 = await loader.readRegister(this.MAC_EFUSE_REG);
     mac0 = mac0 >>> 0;
-    let mac1 = await loader.readRegister({ addr: this.MAC_EFUSE_REG + 4 });
+    let mac1 = await loader.readRegister(this.MAC_EFUSE_REG + 4);
     mac1 = (mac1 >>> 0) & 0x0000ffff;
     const mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;

@@ -1,5 +1,5 @@
-import { ESPLoader } from '../ESPLoader.js';
-import { BaseDevice } from './base.js';
+import { ESPLoader } from "../ESPLoader.js";
+import { BaseDevice, ChipFeature } from "./base.js";
 
 export class ESP32S3ROM extends BaseDevice {
   public CHIP_NAME = "ESP32-S3";
@@ -18,7 +18,7 @@ export class ESP32S3ROM extends BaseDevice {
     ["2MB", 0x10],
     ["4MB", 0x20],
     ["8MB", 0x30],
-    ["16MB", 0x40],
+    ["16MB", 0x40]
   ]);
 
   public SPI_REG_BASE = 0x60002000;
@@ -119,35 +119,31 @@ export class ESP32S3ROM extends BaseDevice {
     "A6EOOkSXLzPI/0905+E35NsMZL5N2dQx7VQhTldrENTvyi1fQDWenT4lm8tQK+l3" +
     "KW+3NnXYMAdbYwkNHP1ZTgd8RtiVeVq1Sv50vbRlrKlDTZc48SKV/f8Zky2A";
 
-  constructor() {
-    super();
-  }
-
   public postConnect = async (loader: ESPLoader) => {
-    var buf_no =
-      (await loader.readRegister({ addr: this.UARTDEV_BUF_NO })) & 0xff;
-    console.log("In _post_connect " + buf_no);
-    if (buf_no == this.UARTDEV_BUF_NO_USB) {
+    const bufferNumber =
+      (await loader.readRegister(this.UARTDEV_BUF_NO)) & 0xff;
+    console.log(`In _post_connect ${bufferNumber}`);
+    if (bufferNumber == this.UARTDEV_BUF_NO_USB) {
       loader.ESP_RAM_BLOCK = this.USB_RAM_BLOCK;
     }
   };
 
-  public getChipDescription = async (loader: ESPLoader) => {
-    return "ESP32-S3";
+  public getChipDescription = () => {
+    return Promise.resolve("ESP32-S3");
   };
-  public getChipFeatures = async (loader: ESPLoader) => {
-    return ["Wi-Fi", "BLE"];
+  public getChipFeatures = () => {
+    return Promise.resolve([ChipFeature.WiFi, ChipFeature.BLE]);
   };
-  public getCrystalFreq = async (loader: ESPLoader) => {
-    return 40;
+  public getCrystalFreq = () => {
+    return Promise.resolve(40);
   };
 
   public readMac = async (loader: ESPLoader) => {
-    var mac0 = await loader.readRegister({ addr: this.MAC_EFUSE_REG });
+    let mac0 = await loader.readRegister(this.MAC_EFUSE_REG);
     mac0 = mac0 >>> 0;
-    var mac1 = await loader.readRegister({ addr: this.MAC_EFUSE_REG + 4 });
+    let mac1 = await loader.readRegister(this.MAC_EFUSE_REG + 4);
     mac1 = (mac1 >>> 0) & 0x0000ffff;
-    var mac = new Uint8Array(6);
+    const mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;
     mac[1] = mac1 & 0xff;
     mac[2] = (mac0 >> 24) & 0xff;

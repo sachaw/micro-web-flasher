@@ -1,4 +1,24 @@
-import { ESPLoader } from '../ESPLoader.js';
+import { ESPLoader } from "../ESPLoader.js";
+
+export enum ChipFeature {
+  WiFi,
+  BLE,
+  EmbeddedFlash2MB,
+  EmbeddedFlash4MB,
+  EfuseBLK2ADCTempCal,
+  SingleCore,
+  DualCore,
+  Frequency160MHz,
+  Frequency240MHz,
+  EmbeddedFlash,
+  EmbeddedPSRAM,
+  EfuseVRefCalibration,
+  BLK3PartiallyReserved,
+  CodingSchemeNone,
+  CodingScheme3_4,
+  CodingSchemeRepeat_UNSUPPORTED,
+  CodingSchemeInvalid
+}
 
 export abstract class BaseDevice {
   //should be abstract
@@ -35,15 +55,15 @@ export abstract class BaseDevice {
     return h.length === 1 ? "0" + h : h;
   }
 
-  public abstract getChipDescription(loader: ESPLoader): void;
+  public abstract getChipDescription(loader: ESPLoader): Promise<string>;
 
-  public abstract getChipFeatures(loader: ESPLoader): void;
+  public abstract getChipFeatures(loader: ESPLoader): Promise<ChipFeature[]>;
 
-  public abstract getCrystalFreq(loader: ESPLoader): void;
+  public abstract getCrystalFreq(loader: ESPLoader): Promise<number>;
 
   public abstract readMac(loader: ESPLoader): Promise<string>;
 
-  public abstract postConnect(loader: ESPLoader): void; //should be abstract
+  public abstract postConnect(loader: ESPLoader): Promise<void>; //should be abstract
 
   // public abstract read_efuse(
   //   loader: ESPLoader,

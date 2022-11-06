@@ -1,5 +1,5 @@
-import { ESPLoader } from '../ESPLoader.js';
-import { BaseDevice } from './base.js';
+import { ESPLoader } from "../ESPLoader.js";
+import { BaseDevice, ChipFeature } from "./base.js";
 
 export class ESP32S2ROM extends BaseDevice {
   public CHIP_NAME = "ESP32-S2";
@@ -18,7 +18,7 @@ export class ESP32S2ROM extends BaseDevice {
     ["2MB", 0x10],
     ["4MB", 0x20],
     ["8MB", 0x30],
-    ["16MB", 0x40],
+    ["16MB", 0x40]
   ]);
 
   public SPI_REG_BASE = 0x3f402000;
@@ -104,61 +104,59 @@ export class ESP32S2ROM extends BaseDevice {
     "5lUGBV+inIf/Am8w8EfhMoci6RMleHnQiuD71XzwevARlL/cmi84gg9/L+TC1aFI" +
     "PhaAOeuxgvFPCyIcXl5oXscBJKBdOTgbirB0QdA+obr/HyfMWQisDwAA";
 
-  constructor() {
-    super();
+  public postConnect() {
+    return Promise.resolve();
   }
 
-  public postConnect() {}
-
   public get_pkg_version = async (loader: ESPLoader) => {
-    var num_word = 3;
-    var block1_addr = this.EFUSE_BASE + 0x044;
-    var addr = block1_addr + 4 * num_word;
-    var word3 = await loader.readRegister({ addr: addr });
-    var pkg_version = (word3 >> 21) & 0x0f;
-    return pkg_version;
+    const numWord = 3;
+    const block1Address = this.EFUSE_BASE + 0x044;
+    const address = block1Address + 4 * numWord;
+    const word3 = await loader.readRegister(address);
+    const packageVersion = (word3 >> 21) & 0x0f;
+    return packageVersion;
   };
 
   public getChipDescription = async (loader: ESPLoader) => {
-    var chip_desc = ["ESP32-S2", "ESP32-S2FH16", "ESP32-S2FH32"];
-    var pkg_ver = await this.get_pkg_version(loader);
-    if (pkg_ver >= 0 && pkg_ver <= 2) {
-      return chip_desc[pkg_ver];
+    const chipDescription = ["ESP32-S2", "ESP32-S2FH16", "ESP32-S2FH32"];
+    const packageVersion = await this.get_pkg_version(loader);
+    if (packageVersion >= 0 && packageVersion <= 2) {
+      return chipDescription[packageVersion];
     } else {
       return "unknown ESP32-S2";
     }
   };
 
   public getChipFeatures = async (loader: ESPLoader) => {
-    var features = ["Wi-Fi"];
-    var pkg_ver = await this.get_pkg_version(loader);
-    if (pkg_ver == 1) {
-      features.push("Embedded 2MB Flash");
-    } else if (pkg_ver == 2) {
-      features.push("Embedded 4MB Flash");
+    const features = [ChipFeature.WiFi];
+    const packageVersion = await this.get_pkg_version(loader);
+    if (packageVersion == 1) {
+      features.push(ChipFeature.EmbeddedFlash2MB);
+    } else if (packageVersion == 2) {
+      features.push(ChipFeature.EmbeddedFlash4MB);
     }
-    var num_word = 4;
-    var block2_addr = this.EFUSE_BASE + 0x05c;
-    var addr = block2_addr + 4 * num_word;
-    var word4 = await loader.readRegister({ addr: addr });
-    var block2_ver = (word4 >> 4) & 0x07;
+    const numWord = 4;
+    const block2Address = this.EFUSE_BASE + 0x05c;
+    const addr = block2Address + 4 * numWord;
+    const word4 = await loader.readRegister(addr);
+    const block2Version = (word4 >> 4) & 0x07;
 
-    if (block2_ver == 1) {
-      features.push("ADC and temperature sensor calibration in BLK2 of efuse");
+    if (block2Version == 1) {
+      features.push(ChipFeature.EfuseBLK2ADCTempCal);
     }
     return features;
   };
 
-  public getCrystalFreq = async (loader: ESPLoader) => {
-    return 40;
+  public getCrystalFreq = () => {
+    return Promise.resolve(40);
   };
 
   public readMac = async (loader: ESPLoader) => {
-    var mac0 = await loader.readRegister({ addr: this.MAC_EFUSE_REG });
+    let mac0 = await loader.readRegister(this.MAC_EFUSE_REG);
     mac0 = mac0 >>> 0;
-    var mac1 = await loader.readRegister({ addr: this.MAC_EFUSE_REG + 4 });
+    let mac1 = await loader.readRegister(this.MAC_EFUSE_REG + 4);
     mac1 = (mac1 >>> 0) & 0x0000ffff;
-    var mac = new Uint8Array(6);
+    const mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;
     mac[1] = mac1 & 0xff;
     mac[2] = (mac0 >> 24) & 0xff;
